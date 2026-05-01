@@ -1,0 +1,46 @@
+name: Release
+
+# Trigger: push tag like v1.0.0 → build + auto-publish GitHub Release with .exe
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Install Playwright Browsers (Chromium)
+        run: npx playwright install chromium
+
+      - name: Build & Publish to GitHub Releases
+        run: npm run build -- --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketingbot-agent-windows-${{ github.ref_name }}
+          path: release/
+          retention-days: 14
