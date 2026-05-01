@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { getLicenseKey, setLicenseKey, clearLicense, getMachineId, getApiUrl } from './store';
 import { startPolling, stopPolling } from './poller';
+import { checkForUpdatesManual, quitAndInstallNow } from './auto-update';
 
 export function registerIpc(mainWindow: BrowserWindow) {
     ipcMain.handle('license:get', () => getLicenseKey());
@@ -24,6 +25,13 @@ export function registerIpc(mainWindow: BrowserWindow) {
     
     ipcMain.handle('machine:id', () => getMachineId());
     ipcMain.handle('api:url', () => getApiUrl());
+
+    // 자동 업데이트
+    ipcMain.handle('update:check', () => checkForUpdatesManual());
+    ipcMain.handle('update:quit-and-install', () => {
+        quitAndInstallNow();
+        return true;
+    });
     
     // 앱 시작 시 라이선스가 있으면 자동 폴링 시작
     if (getLicenseKey()) {

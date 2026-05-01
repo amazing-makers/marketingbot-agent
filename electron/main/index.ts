@@ -82,10 +82,12 @@ async function createWindow() {
 }
 
 import { migrateExistingSessions } from './migrations/encrypt-sessions'
+import { setupAutoUpdate } from './auto-update'
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   migrateExistingSessions()
-  createWindow()
+  await createWindow()
+  if (win) setupAutoUpdate(win)
 })
 
 app.on('window-all-closed', () => {
