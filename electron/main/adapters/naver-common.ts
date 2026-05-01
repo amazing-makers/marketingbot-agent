@@ -1,6 +1,6 @@
 import { Page, BrowserContext } from 'playwright';
 import { humanDelay } from '../playwright/browser';
-import { getSessionPath } from '../sessions';
+import { getSessionPath, saveEncryptedSession } from '../sessions';
 
 /**
  * 네이버 계정별 세션 키 생성
@@ -43,7 +43,7 @@ export async function ensureNaverLoggedIn(page: Page, context: BrowserContext, s
         await humanDelay(2000, 3000);
         
         // 로그인 성공 시 세션 저장
-        await context.storageState({ path: getSessionPath(sessionKey) });
+        await saveEncryptedSession(context, sessionKey);
         return { alreadyLoggedIn: false, needsManualLogin: true };
     } catch {
         throw new Error('네이버 수동 로그인 시간이 초과되었습니다.');

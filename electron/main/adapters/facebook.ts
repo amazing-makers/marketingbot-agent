@@ -1,5 +1,5 @@
 import { launchBrowserContext, humanDelay, humanType } from '../playwright/browser';
-import { getSessionPath } from '../sessions';
+import { getSessionPath, saveEncryptedSession } from '../sessions';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -31,7 +31,7 @@ export async function postToFacebook(task: FacebookTask): Promise<{ success: boo
             try {
                 // 로그인 완료 시 홈 피드의 글쓰기 영역이 나타날 때까지 대기
                 await page.waitForSelector('div[role="button"]:has-text("무슨 생각"), div[role="button"]:has-text("What\'s on your mind")', { timeout: 300000 });
-                await context.storageState({ path: getSessionPath(task.channelId) });
+                await saveEncryptedSession(context, task.channelId);
                 console.log('[Facebook] 세션 저장 완료.');
             } catch {
                 return { success: false, error: '수동 로그인 시간 초과' };

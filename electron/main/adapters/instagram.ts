@@ -1,6 +1,6 @@
 import { BrowserContext, Page } from 'playwright';
 import { launchBrowserContext, humanDelay, humanType } from '../playwright/browser';
-import { getSessionPath } from '../sessions';
+import { getSessionPath, saveEncryptedSession } from '../sessions';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -30,7 +30,7 @@ export async function postToInstagram(task: InstagramTask): Promise<{ success: b
                     // 홈 피드(a[href="/"])가 보일 때까지 대기
                     await page.waitForSelector('a[href="/"]:not([role="button"])', { timeout: 300000 });
                     // 로그인 성공 시 세션 저장
-                    await context.storageState({ path: getSessionPath(task.channelId) });
+                    await saveEncryptedSession(context, task.channelId);
                     console.log('[Instagram] 세션 저장 성공. 다음부턴 자동 진행됩니다.');
                 } catch {
                     return { success: false, error: '수동 로그인 제한 시간 초과' };

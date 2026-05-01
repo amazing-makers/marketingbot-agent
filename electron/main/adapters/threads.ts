@@ -1,5 +1,5 @@
 import { launchBrowserContext, humanDelay } from '../playwright/browser';
-import { getSessionPath } from '../sessions';
+import { getSessionPath, saveEncryptedSession } from '../sessions';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -31,7 +31,7 @@ export async function postToThreads(task: ThreadsTask): Promise<{ success: boole
             try {
                 // 로그인 완료 시 메인 피드 진입 확인
                 await page.waitForSelector('div[role="textbox"], svg[aria-label="새 게시물"], svg[aria-label="New thread"]', { timeout: 300000 });
-                await context.storageState({ path: getSessionPath(task.channelId) });
+                await saveEncryptedSession(context, task.channelId);
                 console.log('[Threads] 세션 저장 성공.');
             } catch {
                 return { success: false, error: '수동 로그인 시간 초과' };

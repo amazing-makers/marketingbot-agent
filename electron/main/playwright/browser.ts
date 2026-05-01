@@ -10,6 +10,11 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 ];
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { decryptFromFile } from '../crypto/storage-encrypt';
+
 /**
  * 브라우저 및 컨텍스트 초기화
  */
@@ -23,15 +28,41 @@ export async function launchBrowserContext(channelId: string, opts: { headless?:
         ],
     });
     
-    const sessionExists = hasSession(channelId);
+    const sessionFile = getSessionPath(channelId);
+    const sessionExists = fs.existsSync(sessionFile);
+    
+    let storageStateOption = undefined;
+    let tempStateFile: string | null = null;
+    
+    if (sessionExists) {
+        try {
+            // 암호화된 파일 복호화 -> 임시 파일 저장
+            const decrypted = decryptFromFile(sessionFile);
+            tempStateFile = path.join(os.tmpdir(), `mb-state-${channelId}-${Date.now()}.json`);
+            fs.writeFileSync(tempStateFile, decrypted, 'utf8');
+            storageStateOption = tempStateFile;
+        } catch (err) {
+            console.warn(`[Browser] Session decrypt failed for ${channelId}, treating as new session:`, err);
+        }
+    }
+    
     const context = await browser.newContext({
         viewport: { width: 1280, height: 800 },
         userAgent: USER_AGENTS[0],
         locale: 'ko-KR',
         timezoneId: 'Asia/Seoul',
-        // 기존 세션이 있으면 로드
-        ...(sessionExists ? { storageState: getSessionPath(channelId) } : {}),
+        // 임시 복호화 파일이 있으면 로드
+        storageState: storageStateOption,
     });
+    
+    // Playwright가 메모리에 로드했으므로 임시 파일 즉시 삭제
+    if (tempStateFile && fs.existsSync(tempStateFile)) {
+        try {
+            fs.unlinkSync(tempStateFile);
+        } catch (e) {
+            console.error('[Browser] Failed to cleanup temp session file:', e);
+        }
+    }
     
     return { browser, context, isNewSession: !sessionExists };
 }

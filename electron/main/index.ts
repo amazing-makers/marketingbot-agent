@@ -81,7 +81,12 @@ async function createWindow() {
   registerIpc(win)
 }
 
-app.whenReady().then(createWindow)
+import { migrateExistingSessions } from './migrations/encrypt-sessions'
+
+app.whenReady().then(() => {
+  migrateExistingSessions()
+  createWindow()
+})
 
 app.on('window-all-closed', () => {
   win = null
