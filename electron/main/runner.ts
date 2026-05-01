@@ -2,6 +2,7 @@ import { postToInstagram } from './adapters/instagram';
 import { postToNaverBlog } from './adapters/naver-blog';
 import { postToNaverCafe } from './adapters/naver-cafe';
 import { postToFacebook } from './adapters/facebook';
+import { postToThreads } from './adapters/threads';
 
 interface Task {
     taskId: string;
@@ -66,8 +67,20 @@ export async function runTask(task: Task): Promise<void> {
             if (!result.success) throw new Error(result.error);
             return;
         }
+
+        case 'THREADS': {
+            const result = await postToThreads({
+                taskId: task.taskId,
+                channelId: task.channelId,
+                credentials: task.credentials,
+                content: task.content,
+                mediaUrls: task.mediaUrls,
+            });
+            if (!result.success) throw new Error(result.error);
+            return;
+        }
         
         default:
-            throw new Error(`지원하지 않는 채널 타입입니다: ${task.channelType} (Phase 5.5 예정)`);
+            throw new Error(`지원하지 않는 채널 타입입니다: ${task.channelType} (Phase 5.5.1 예정)`);
     }
 }
