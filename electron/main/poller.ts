@@ -38,16 +38,19 @@ export function startPolling(onStatusChange: (status: string) => void) {
             
             const tasks = res.data.tasks || [];
             onStatusChange(`POLLING_OK (${tasks.length} tasks)`);
-            
-            for (const task of tasks) {
-                try {
-                    onStatusChange(`RUNNING ${task.taskId}`);
-                    await runTask(task);
-                    await reportResult(licenseKey, task.taskId, 'SUCCESS');
-                } catch (err: any) {
-                    await reportResult(licenseKey, task.taskId, 'FAILED', err.message);
-                }
-            }
+
+            // 병렬 실행 — 다른 채널은 동시에 처리. 같은 채널은 runner 의 in-process lock 으로 자동 직렬화됨.
+            await Promise.allSettled(
+                tasks.map(async (task: any) => {
+                    try {
+                        onStatusChange(`RUNNING ${task.taskId}`);
+                        await runTask(task);
+                        await reportResult(licenseKey, task.taskId, 'SUCCESS');
+                    } catch (err: any) {
+                        await reportResult(licenseKey, task.taskId, 'FAILED', err.message);
+                    }
+                })
+            );
         } catch (err: any) {
             onStatusChange(`POLL_ERROR: ${err.message}`);
         } finally {
