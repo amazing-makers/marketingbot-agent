@@ -1,4 +1,4 @@
-import { postToInstagram, verifyInstagram } from './adapters/instagram';
+import { postToInstagram, verifyInstagram, openInstagramInBrowser } from './adapters/instagram';
 import { postToNaverBlog } from './adapters/naver-blog';
 import { postToNaverCafe } from './adapters/naver-cafe';
 import { postToFacebook } from './adapters/facebook';
@@ -19,6 +19,7 @@ interface VerifyTask {
     channelType: string;
     accountName?: string;
     credentials?: any;
+    kind?: 'VERIFY' | 'OPEN_BROWSER';
 }
 
 // 채널별 in-process lock — 같은 채널은 동시 1개 task 만 실행
@@ -135,7 +136,26 @@ async function runTaskInner(task: Task): Promise<void> {
  */
 export async function runVerifyTask(task: VerifyTask): Promise<void> {
     return withChannelLock(task.channelId, async () => {
-        console.log(`[Runner] VERIFY ${task.channelType} (channelId: ${task.channelId})`);
+        const kind = task.kind || 'VERIFY';
+        console.log(`[Runner] ${kind} ${task.channelType} (channelId: ${task.channelId})`);
+
+        if (kind === 'OPEN_BROWSER') {
+            // Phase 50 — 사용자가 채널 카드 클릭 → 저장된 세션으로 SNS 본인 페이지 노출.
+            switch (task.channelType) {
+                case 'INSTAGRAM': {
+                    const r = await openInstagramInBrowser({
+                        channelId: task.channelId,
+                        accountName: task.accountName,
+                    });
+                    if (!r.success) throw new Error(r.error || '인스타그램 브라우저 열기 실패');
+                    return;
+                }
+                default:
+                    throw new Error(`아직 브라우저 열기를 지원하지 않는 채널입니다: ${task.channelType}`);
+            }
+        }
+
+        // kind === 'VERIFY'
         switch (task.channelType) {
             case 'INSTAGRAM': {
                 const r = await verifyInstagram({
@@ -146,8 +166,6 @@ export async function runVerifyTask(task: VerifyTask): Promise<void> {
                 if (!r.success) throw new Error(r.error || '인스타그램 인증 실패');
                 return;
             }
-            // 다른 에이전트 채널 (FACEBOOK/THREADS/NAVER_*) 은 추후 구현.
-            // 현재는 verify 미지원 → 명확한 에러로 fail 처리.
             default:
                 throw new Error(`아직 인증을 지원하지 않는 채널입니다: ${task.channelType}`);
         }

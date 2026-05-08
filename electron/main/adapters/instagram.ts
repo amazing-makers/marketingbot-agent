@@ -154,3 +154,58 @@ export async function verifyInstagram(task: InstagramVerifyTask): Promise<{ succ
         await browser.close();
     }
 }
+
+interface InstagramOpenTask {
+    channelId: string;
+    accountName?: string;
+}
+
+/**
+ * Phase 50 — 인스타그램 채널 카드 클릭 시 사용자에게 본인 계정 페이지 노출.
+ *
+ * verify 시 저장된 storage state 로 브라우저를 띄움 — 사용자 일반 브라우저에 인스타 로그인이
+ * 안 돼 있어도 본인 계정으로 자동 접속됨.
+ *
+ * 브라우저는 사용자가 닫을 때까지 유지. close 이벤트 감지 시 정상 종료.
+ * 30분 timeout 도 설정 (서버 측 좀비 복구와 맞춤).
+ */
+export async function openInstagramInBrowser(task: InstagramOpenTask): Promise<{ success: boolean; error?: string }> {
+    const { browser, context, isNewSession } = await launchBrowserContext(task.channelId, { headless: false });
+
+    if (isNewSession) {
+        // 인증된 적 없는 채널 — 세션이 없어 자동 로그인 불가.
+        await context.close();
+        await browser.close();
+        return { success: false, error: '먼저 인증을 완료해주세요. (저장된 세션이 없어 자동 로그인 불가)' };
+    }
+
+    try {
+        const page = await context.newPage();
+        await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
+
+        // 사용자가 창 닫을 때까지 대기. close 이벤트 또는 30분 timeout.
+        const TIMEOUT_MS = 30 * 60 * 1000;
+        await new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                console.log('[Instagram OPEN] 30분 timeout — 브라우저 자동 닫힘');
+                resolve();
+            }, TIMEOUT_MS);
+
+            const onClose = () => {
+                clearTimeout(timer);
+                console.log('[Instagram OPEN] 사용자가 브라우저 창 닫음 — 정상 종료');
+                resolve();
+            };
+            page.on('close', onClose);
+            context.on('close', onClose);
+            browser.on('disconnected', onClose);
+        });
+
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message || '인스타그램 브라우저 열기 중 오류' };
+    } finally {
+        try { await context.close(); } catch { /* 이미 닫힘 */ }
+        try { await browser.close(); } catch { /* 이미 닫힘 */ }
+    }
+}
