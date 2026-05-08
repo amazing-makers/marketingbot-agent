@@ -1,4 +1,4 @@
-import { postToInstagram } from './adapters/instagram';
+import { postToInstagram, verifyInstagram } from './adapters/instagram';
 import { postToNaverBlog } from './adapters/naver-blog';
 import { postToNaverCafe } from './adapters/naver-cafe';
 import { postToFacebook } from './adapters/facebook';
@@ -11,6 +11,14 @@ interface Task {
     credentials: any;
     content: string;
     mediaUrls?: string[];
+}
+
+interface VerifyTask {
+    taskId: string;
+    channelId: string;
+    channelType: string;
+    accountName?: string;
+    credentials?: any;
 }
 
 // 채널별 in-process lock — 같은 채널은 동시 1개 task 만 실행
@@ -114,4 +122,34 @@ async function runTaskInner(task: Task): Promise<void> {
         default:
             throw new Error(`지원하지 않는 채널 타입입니다: ${task.channelType} (Phase 5.5.1 예정)`);
     }
+}
+
+/**
+ * Phase 50 — 채널 인증 (verify) 전용 작업.
+ *
+ * 발행과 달리 content/mediaUrls 없음. 브라우저를 띄워 사용자가 직접 로그인하도록 하고
+ * 세션이 정상 저장되면 SUCCESS, 시간초과/실패면 throw 해서 FAILED 처리.
+ *
+ * 같은 채널의 발행 task 와 lock 을 공유하므로 verify 가 진행 중이면 발행이 대기,
+ * 발행이 진행 중이면 verify 가 대기 (같은 브라우저 세션 충돌 방지).
+ */
+export async function runVerifyTask(task: VerifyTask): Promise<void> {
+    return withChannelLock(task.channelId, async () => {
+        console.log(`[Runner] VERIFY ${task.channelType} (channelId: ${task.channelId})`);
+        switch (task.channelType) {
+            case 'INSTAGRAM': {
+                const r = await verifyInstagram({
+                    channelId: task.channelId,
+                    accountName: task.accountName,
+                    credentials: task.credentials,
+                });
+                if (!r.success) throw new Error(r.error || '인스타그램 인증 실패');
+                return;
+            }
+            // 다른 에이전트 채널 (FACEBOOK/THREADS/NAVER_*) 은 추후 구현.
+            // 현재는 verify 미지원 → 명확한 에러로 fail 처리.
+            default:
+                throw new Error(`아직 인증을 지원하지 않는 채널입니다: ${task.channelType}`);
+        }
+    });
 }

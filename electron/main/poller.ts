@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { getLicenseKey, getApiUrl, getMachineId } from './store';
-import { runTask } from './runner';
+import { runTask, runVerifyTask } from './runner';
 import { app } from 'electron';
 import * as os from 'os';
 
@@ -37,11 +37,12 @@ export function startPolling(onStatusChange: (status: string) => void) {
             );
             
             const tasks = res.data.tasks || [];
-            onStatusChange(`POLLING_OK (${tasks.length} tasks)`);
+            const verifyTasks = res.data.verifyTasks || [];
+            onStatusChange(`POLLING_OK (${tasks.length} tasks, ${verifyTasks.length} verify)`);
 
             // 병렬 실행 — 다른 채널은 동시에 처리. 같은 채널은 runner 의 in-process lock 으로 자동 직렬화됨.
-            await Promise.allSettled(
-                tasks.map(async (task: any) => {
+            await Promise.allSettled([
+                ...tasks.map(async (task: any) => {
                     try {
                         onStatusChange(`RUNNING ${task.taskId}`);
                         await runTask(task);
@@ -49,8 +50,19 @@ export function startPolling(onStatusChange: (status: string) => void) {
                     } catch (err: any) {
                         await reportResult(licenseKey, task.taskId, 'FAILED', err.message);
                     }
-                })
-            );
+                }),
+                // Phase 50 — verify task 처리. publish 와 같은 channel lock 을 공유하므로
+                // 같은 채널의 발행이 진행 중이면 자연스럽게 직렬화됨.
+                ...verifyTasks.map(async (vt: any) => {
+                    try {
+                        onStatusChange(`VERIFY ${vt.taskId} (${vt.channelType})`);
+                        await runVerifyTask(vt);
+                        await reportResult(licenseKey, vt.taskId, 'SUCCESS', undefined, 'VERIFY');
+                    } catch (err: any) {
+                        await reportResult(licenseKey, vt.taskId, 'FAILED', err.message, 'VERIFY');
+                    }
+                }),
+            ]);
         } catch (err: any) {
             onStatusChange(`POLL_ERROR: ${err.message}`);
         } finally {
@@ -69,15 +81,21 @@ export function stopPolling() {
     }
 }
 
-async function reportResult(licenseKey: string, taskId: string, status: 'SUCCESS' | 'FAILED', errorLog?: string) {
+async function reportResult(
+    licenseKey: string,
+    taskId: string,
+    status: 'SUCCESS' | 'FAILED',
+    errorLog?: string,
+    kind: 'PUBLISH' | 'VERIFY' = 'PUBLISH',
+) {
     try {
         const apiUrl = getApiUrl();
         await axios.post(
             `${apiUrl}/api/agent/result`,
-            { taskId, status, executedAt: new Date().toISOString(), errorLog },
-            { 
-                headers: { Authorization: `Bearer ${licenseKey}` }, 
-                timeout: 10000 
+            { taskId, status, executedAt: new Date().toISOString(), errorLog, kind },
+            {
+                headers: { Authorization: `Bearer ${licenseKey}` },
+                timeout: 10000
             }
         );
     } catch (err) {

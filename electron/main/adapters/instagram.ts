@@ -96,3 +96,60 @@ export async function postToInstagram(task: InstagramTask): Promise<{ success: b
         await browser.close();
     }
 }
+
+interface InstagramVerifyTask {
+    channelId: string;
+    accountName?: string;
+    credentials?: { username?: string; password?: string };
+}
+
+/**
+ * Phase 50 — 인스타그램 채널 인증 전용.
+ *
+ * 발행 없이 IG 홈에 접속해서 로그인 상태만 확인:
+ *   - 이미 저장된 세션으로 자동 로그인되면 → 즉시 success (사용자 개입 X)
+ *   - 로그인 폼이 보이면 → 사용자가 5분 안에 직접 로그인 (2FA 포함) → 세션 저장 → success
+ *   - 5분 시간초과 → fail
+ *
+ * credentials.username/password 가 있으면 로그인 폼 username 필드에만 자동 채워서 hint 제공
+ * (비번까지 자동 입력하면 IG 봇 감지 ↑ — 사용자가 직접 비번/2FA 입력하도록).
+ */
+export async function verifyInstagram(task: InstagramVerifyTask): Promise<{ success: boolean; error?: string }> {
+    const { browser, context } = await launchBrowserContext(task.channelId, { headless: false });
+
+    try {
+        const page = await context.newPage();
+        await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle' });
+        await humanDelay(1500, 3000);
+
+        const loginForm = await page.$('input[name="username"]');
+        if (!loginForm) {
+            // 이미 로그인된 세션 — 그대로 사용
+            await saveEncryptedSession(context, task.channelId);
+            return { success: true };
+        }
+
+        // 로그인 폼 노출 → 사용자에게 직접 로그인 요청 (5분 대기)
+        if (task.credentials?.username) {
+            try {
+                await humanType(loginForm, task.credentials.username);
+            } catch {
+                // 자동 입력 실패해도 무시 (사용자가 직접 입력)
+            }
+        }
+        console.log('[Instagram VERIFY] 로그인 창에서 직접 로그인해주세요 (5분 대기)');
+        try {
+            await page.waitForSelector('a[href="/"]:not([role="button"])', { timeout: 300000 });
+            await saveEncryptedSession(context, task.channelId);
+            console.log('[Instagram VERIFY] 인증 성공 — 세션 저장 완료');
+            return { success: true };
+        } catch {
+            return { success: false, error: '로그인 시간 초과 (5분)' };
+        }
+    } catch (err: any) {
+        return { success: false, error: err.message || '인스타그램 인증 중 오류' };
+    } finally {
+        await context.close();
+        await browser.close();
+    }
+}
