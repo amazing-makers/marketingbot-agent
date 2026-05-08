@@ -132,7 +132,8 @@ export async function verifyInstagram(task: InstagramVerifyTask): Promise<{ succ
         // 로그인 폼 노출 → 사용자에게 직접 로그인 요청 (5분 대기)
         if (task.credentials?.username) {
             try {
-                await humanType(loginForm, task.credentials.username);
+                // humanType(page, selector, text) — 3-arg 시그니처
+                await humanType(page, 'input[name="username"]', task.credentials.username);
             } catch {
                 // 자동 입력 실패해도 무시 (사용자가 직접 입력)
             }

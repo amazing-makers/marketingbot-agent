@@ -11,11 +11,13 @@ const KEY_LENGTH = 32;
 export function getMachineKey(): Buffer {
     // safeStorage 사용 가능 (macOS Keychain, Windows DPAPI, Linux libsecret)
     if (safeStorage.isEncryptionAvailable()) {
-        let encrypted = store.get('encryptedKey');
+        // electron-store v11 의 generic 타입에서 .get/.set 이 직접 노출 안 됨 — runtime 동작은 정상.
+        // 같은 파일 아래쪽 fallback 분기와 동일하게 (store as any) cast 로 우회.
+        const encrypted = (store as any).get('encryptedKey') as string | undefined;
         if (!encrypted) {
             const newKey = randomBytes(KEY_LENGTH);
             const buf = safeStorage.encryptString(newKey.toString('hex'));
-            store.set('encryptedKey', buf.toString('base64'));
+            (store as any).set('encryptedKey', buf.toString('base64'));
             return newKey;
         }
         const decrypted = safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
