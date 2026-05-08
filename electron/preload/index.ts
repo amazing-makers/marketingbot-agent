@@ -3,6 +3,7 @@ import { electronAPI } from '@electron-toolkit/preload';
 
 const agentApi = {
   ...electronAPI,
+  getAppVersion: () => ipcRenderer.invoke('app:version') as Promise<string>,
   getLicense: () => ipcRenderer.invoke('license:get'),
   setLicense: (key: string) => ipcRenderer.invoke('license:set', key),
   clearLicense: () => ipcRenderer.invoke('license:clear'),

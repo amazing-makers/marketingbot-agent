@@ -1,9 +1,10 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 import { getLicenseKey, setLicenseKey, clearLicense, getMachineId, getApiUrl } from './store';
 import { startPolling, stopPolling } from './poller';
 import { checkForUpdatesManual, quitAndInstallNow } from './auto-update';
 
 export function registerIpc(mainWindow: BrowserWindow) {
+    ipcMain.handle('app:version', () => app.getVersion());
     ipcMain.handle('license:get', () => getLicenseKey());
     
     ipcMain.handle('license:set', (_, key: string) => {

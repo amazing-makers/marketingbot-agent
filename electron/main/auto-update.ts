@@ -85,7 +85,7 @@ export function setupAutoUpdate(window: BrowserWindow) {
         });
     });
 
-    // 시작 시 1회 + 6시간마다 체크
+    // 시작 시 1회 + 1시간마다 체크 (이전 6시간 — 너무 길어서 사용자가 옛 버전에 머무는 경우 잦았음)
     autoUpdater.checkForUpdates().catch((err) => {
         console.warn('[AutoUpdate] Initial check failed:', err.message);
     });
@@ -96,7 +96,7 @@ export function setupAutoUpdate(window: BrowserWindow) {
                 console.warn('[AutoUpdate] Periodic check failed:', err.message);
             });
         },
-        6 * 60 * 60 * 1000
+        60 * 60 * 1000
     );
 }
 

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Container, Paper, Title, Text, TextInput, Button, Stack, Center } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Container, Paper, Title, Text, TextInput, Button, Stack, Center, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconKey } from '@tabler/icons-react';
 
@@ -10,6 +10,11 @@ interface Props {
 export default function Activate({ onActivated }: Props) {
   const [key, setKey] = useState('');
   const [loading, setLoading] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => {
+    window.electron.getAppVersion?.().then(setAppVersion).catch(() => {});
+  }, []);
 
   const handleActivate = async () => {
     if (!key.trim()) return;
@@ -42,7 +47,12 @@ export default function Activate({ onActivated }: Props) {
         <Paper withBorder shadow="md" p={30} radius="md">
           <Stack align="center" mb={20}>
             <IconKey size={48} color="#228be6" />
-            <Title order={2} ta="center">에이전트 활성화</Title>
+            <Group gap="xs" align="baseline">
+              <Title order={2} ta="center">에이전트 활성화</Title>
+              {appVersion && (
+                <Text size="sm" c="dimmed" fw={500}>v{appVersion}</Text>
+              )}
+            </Group>
             <Text c="dimmed" size="sm" ta="center">
               서비스 이용을 위해 발급받은 라이선스 키를 입력해주세요.
             </Text>
