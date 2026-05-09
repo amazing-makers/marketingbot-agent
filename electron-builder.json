@@ -24,9 +24,18 @@
         "arch": [
           "x64"
         ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
       }
     ],
     "artifactName": "${productName}_${version}.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Portable_${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,

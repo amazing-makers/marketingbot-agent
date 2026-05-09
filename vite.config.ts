@@ -39,6 +39,12 @@ export default defineConfig(({ command }) => {
               outDir: 'dist-electron/main',
               rollupOptions: {
                 external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
+                output: {
+                  // ESM 출력 강제 + .mjs 확장자 — Electron v33+ 의 ESM main 지원 활용.
+                  // 이전: 기본 CJS 출력 → import.meta.url 이 undefined → createRequire 실패.
+                  format: 'es',
+                  entryFileNames: '[name].mjs',
+                },
               },
             },
           },
