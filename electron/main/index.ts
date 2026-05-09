@@ -55,6 +55,10 @@ async function createWindow() {
     win.webContents.openDevTools()
   } else {
     win.loadFile(indexHtml)
+    // 임시 디버깅 — production 에서도 DevTools 자동 열기. 흰 화면 등 issue 파악 후 다음 release 에서 제거.
+    if (process.env.MB_DEBUG_DEVTOOLS !== '0') {
+      win.webContents.openDevTools({ mode: 'detach' })
+    }
   }
 
   // Test actively push message to the Electron-Renderer
