@@ -28,6 +28,9 @@ export default defineConfig({
         },
     },
     renderer: {
+        // file:// 프로토콜에서 asset 절대경로(/assets/...) 가 system root 로 해석되는 문제 방지.
+        // './'로 두면 index.html 기준 상대 경로로 변환됨 — Electron production 환경에서 필수.
+        base: './',
         plugins: [react()],
         resolve: {
             alias: {
