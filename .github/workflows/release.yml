@@ -35,13 +35,11 @@ jobs:
         run: npx playwright install chromium
 
       - name: Build & Publish to GitHub Releases
-        # 'npm run build -- --win --publish always' 패턴은 chained 'tsc && vite build && electron-builder'
-        # 의 첫 명령(tsc) 에만 인자가 전달되어 tsc 가 '--win' 을 모르고 즉시 fail.
-        # 각 단계를 명시적으로 호출 — 어느 단계 실패인지도 로그에서 명확히 구분됨.
+        # electron-vite 정식판 (v2.3.0~) — main/preload/renderer 3-entry 자동 처리.
+        # tsc 별도 불필요 (electron-vite 가 esbuild 로 transpile).
         shell: bash
         run: |
-          npx tsc
-          npx vite build
+          npx electron-vite build
           npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

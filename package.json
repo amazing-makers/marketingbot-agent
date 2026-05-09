@@ -1,7 +1,7 @@
 {
   "name": "electron-vite-react",
-  "version": "2.2.8",
-  "main": "dist-electron/main/index.mjs",
+  "version": "2.3.0",
+  "main": "out/main/index.js",
   "description": "Electron Vite React boilerplate.",
   "author": "草鞋没号 <308487730@qq.com>",
   "license": "MIT",
@@ -12,10 +12,10 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
-    "preview": "vite preview",
-    "pretest": "vite build --mode=test",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-vite build && electron-builder",
     "test": "vitest run"
   },
   "dependencies": {
@@ -47,8 +47,6 @@
     "postcss-import": "^16.1.1",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vite-plugin-electron": "^0.29.1",
-    "vite-plugin-electron-renderer": "^0.14.7"
+    "vite": "^8.0.10"
   }
 }

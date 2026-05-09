@@ -1,27 +1,17 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
 import { registerIpc } from './ipc'
 
-const require = createRequire(import.meta.url)
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-// The built directory structure
-//
-// ├─┬ dist-electron
-// │ ├─┬ main
-// │ │ └── index.js    > Electron-Main
-// │ └─┬ preload
-// │   └── index.mjs   > Preload-Scripts
-// ├─┬ dist
-// │ └── index.html    > Electron-Renderer
-//
+// electron-vite 정식판은 main 을 CJS 출력 — __dirname 네이티브 사용 (createRequire/fileURLToPath 불필요).
+// 빌드 출력 구조:
+//   out/main/index.js       — Electron-Main (CJS)
+//   out/preload/index.js    — Preload-Scripts (CJS)
+//   out/renderer/index.html — Renderer (Vite SPA)
 process.env.APP_ROOT = path.join(__dirname, '../..')
 
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+export const MAIN_DIST = path.join(process.env.APP_ROOT, 'out')
+export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'out/renderer')
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
@@ -40,7 +30,8 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let win: BrowserWindow | null = null
-const preload = path.join(__dirname, '../preload/index.mjs')
+// electron-vite 정식판은 preload 를 .mjs 로 출력 — Electron 의 sandbox 와 호환되는 방식.
+const preload = path.join(__dirname, '../preload/index.js')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
